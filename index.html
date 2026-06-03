@@ -9,7 +9,7 @@
     
     <title>글로벌 멀티 스위칭 계산기</title>
     <style>
-        /* [수정] 아이폰 전체 화면에 공백 없이 꽉 차도록 여백 제거 및 스크롤 방지 */
+        /* 아이폰 전체 화면에 공백 없이 꽉 차도록 여백 제거 및 스크롤 방지 */
         html, body { 
             margin: 0; 
             padding: 0; 
@@ -17,7 +17,6 @@
             height: 100%; 
             background: #1c1c1e; 
             overflow: hidden;
-            touch-action: none; /* 브라우저 자체의 제스처(확대, 축소)를 원천 차단 */
         }
 
         body { 
@@ -27,10 +26,10 @@
             justify-content: flex-end; /* 키패드가 화면 아래쪽에 딱 붙도록 배치 */
             box-sizing: border-box;
             padding: 20px;
-            padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* 아이폰 하단 홈 바 영역 대응 */
+            /* 아이폰 하단 홈 바(세이프 에어리어) 영역에 대응하여 여백 자동 확보 */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
         }
         
-        /* [수정] 모바일 화면 너비에 맞게 유연하게 꽉 차도록 max-width 제거 */
         .calculator { 
             width: 100%; 
             background: #1c1c1e; 
@@ -60,7 +59,7 @@
         
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 100%; }
         
-        /* [수정] 터치 시 딜레이를 없애고 더블 탭 확대를 방지하는 스타일 지정 */
+        /* [중요] touch-action: manipulation을 통해 브라우저의 0.3초 타이밍 간보기를 없애고 즉각 반응하게 만듦 */
         button { 
             height: 54px; 
             border-radius: 50px; 
@@ -70,7 +69,7 @@
             cursor: pointer; 
             transition: background 0.1s; 
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation; /* 버튼 연속 터치 시 브라우저 확대 기능 제한 */
+            touch-action: manipulation; 
         }
         button:active { filter: brightness(1.3); }
         
@@ -161,16 +160,6 @@
 
     window.onload = function() {
         fetchRealTimeRates();
-        
-        // [추가] 아이폰 사파리에서 간헐적으로 발생하는 더블 탭 확대 이벤트를 자바스크립트 단에서 한 번 더 강제 차단
-        let lastTouchEnd = 0;
-        document.documentElement.addEventListener('touchend', function (event) {
-            let now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault(); // 0.3초 이내 연타 시 브라우저 확대 반응 무시
-            }
-            lastTouchEnd = now;
-        }, false);
     };
 
     function switchOutputCurrency(currency) {
