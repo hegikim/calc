@@ -121,12 +121,14 @@
 
 <script>
     let inputString = "0";      
-    let currentCurrency = "KRW"; // 현재 활성화된 기준 통화 (입력/출력 통합 제어)
+    let currentCurrency = "KRW"; 
     let isCalculated = false;   
-    let calculatedRawResult = 0; // '현재 기준 통화' 상태로 계산이 완료된 순수 숫자 결과값
+    let calculatedRawResult = 0; 
 
     let exchangeRates = { 'KRW': 1, 'USD': 1380, 'EUR': 1490, 'JPY': 8.8, 'CNY': 190 }; 
     const currencySymbols = { 'KRW': '원', 'USD': '달러 ($)', 'EUR': '유로 (€)', 'JPY': '엔 (￥)', 'CNY': '위안 (元)' };
+    const currencySigns = { 'KRW': '', 'USD': '$ ', 'EUR': '€ ', 'JPY': '￥ ', 'CNY': '元 ' };
+    const currencyTexts = { 'KRW': '원', 'USD': '달러', 'EUR': '유로', 'JPY': '엔', 'CNY': '위안' };
     const modeIds = { 'KRW': 'mode-KRW', 'USD': 'mode-USD', 'EUR': 'mode-EUR', 'JPY': 'mode-JPY', 'CNY': 'mode-CNY' };
 
     async function fetchRealTimeRates() {
@@ -148,38 +150,32 @@
         fetchRealTimeRates();
     };
 
-    // [로직 개편] 상단 탭 클릭 시: 입력 통화 기준을 전환하고, 이미 계산 결과가 있다면 실시간으로 상호 환산
     function switchCurrencyMode(targetCurrency) {
         if (currentCurrency === targetCurrency) return;
 
         let previousCurrency = currentCurrency;
         currentCurrency = targetCurrency;
 
-        // 상단 탭 UI 활성화 스위칭
         for (let key in modeIds) {
             let btn = document.getElementById(modeIds[key]);
             if (key === targetCurrency) btn.classList.add('active');
             else btn.classList.remove('active');
         }
 
-        // 이미 완료된 계산 결과가 있는 상태에서 탭을 누르면 실시간 통화 전환 연산 수행
         if (isCalculated || calculatedRawResult > 0) {
-            // 1단계: 기존 통화 금액을 '원화' 기준으로 표준화 역산
             let krwValue = calculatedRawResult * exchangeRates[previousCurrency];
-            // 2단계: 표준화된 원화를 새로 선택한 목적지 국가 통화로 최종 환산
             calculatedRawResult = krwValue / exchangeRates[targetCurrency];
-            
             renderFinalResult();
-        } else {
-            // 계산 전 입력 도중이라면 결과창의 화폐 단위만 유연하게 바꿈
-            document.getElementById("result-screen").innerText = "0 " + currencySymbols[currentCurrency];
         }
+        
+        renderScreen();
     }
 
     function pressNum(val) {
         if (isCalculated) {
             inputString = (val === ".") ? "0." : val;
             isCalculated = false;
+            calculatedRawResult = 0;
         } else {
             if (inputString === "0") {
                 if (val === "00") return;
@@ -192,7 +188,10 @@
     }
 
     function pressUnit(unit) {
-        if (isCalculated) isCalculated = false; 
+        if (isCalculated) {
+            isCalculated = false;
+            calculatedRawResult = 0;
+        }
         if (inputString === "0" || inputString.endsWith(' ')) return;
 
         let match = inputString.match(/[0-9.]+$/);
@@ -209,8 +208,9 @@
     function pressOp(op) {
         if (inputString === "0" && calculatedRawResult === 0) return;
         if (isCalculated) {
-            inputString = calculatedRawResult.toString() + op;
+            inputString = calculatedRawResult.toFixed(2).replace(/\.00$/, '') + op;
             isCalculated = false;
+            calculatedRawResult = 0;
         } else {
             if (inputString.endsWith(' ')) return; 
             inputString += op;
@@ -241,7 +241,21 @@
     }
 
     function renderScreen() {
-        document.getElementById("screen").innerText = inputString;
+        let sign = currencySigns[currentCurrency];
+        
+        if (isCalculated) {
+            document.getElementById("screen").innerText = sign + inputString;
+        } else {
+            let parts = inputString.split(/([÷×\-+])/);
+            let formattedDisplay = parts.map(part => {
+                if (/^[0-9.억만천백십]+$/.test(part)) {
+                    return sign + part;
+                }
+                return part;
+            }).join('');
+            document.getElementById("screen").innerText = formattedDisplay;
+        }
+        
         updateSubNumeric();
     }
 
@@ -291,7 +305,7 @@
 
     function updateSubNumeric() {
         if (inputString === "0") {
-            document.getElementById("sub-numeric").innerText = "0";
+            document.getElementById("sub-numeric").innerText = "0 " + currencyTexts[currentCurrency];
             return;
         }
         try {
@@ -305,7 +319,7 @@
             displayFormula = displayFormula.replace(/[0-9.]+/g, function(num) {
                 return Number(num).toLocaleString(undefined, { maximumFractionDigits: 4 });
             });
-            document.getElementById("sub-numeric").innerText = displayFormula;
+            document.getElementById("sub-numeric").innerText = displayFormula + " " + currencyTexts[currentCurrency];
         } catch(e) {
             document.getElementById("sub-numeric").innerText = "입력 중...";
         }
@@ -325,13 +339,12 @@
         }
     }
 
-    // 최종 결과 출력부
     function renderFinalResult() {
         let formatted = "";
         if (currentCurrency === 'KRW') {
             formatted = Math.round(calculatedRawResult).toLocaleString();
         } else {
-            formatted = calculatedRawResult.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            formatted = calculatedRawResult.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
         document.getElementById("result-screen").innerText = formatted + " " + currencySymbols[currentCurrency];
     }
