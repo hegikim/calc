@@ -12,14 +12,13 @@
             padding: 0; 
             width: 100%; 
             height: 100%; 
-            background: #000000; /* 전체 배경을 어둡게 처리 */
+            background: #000000; 
             overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: flex-end;
         }
 
-        /* [보완] PC나 태블릿 등 넓은 화면에서도 모바일 비율을 유지하도록 가로폭 제한 */
         .calculator { 
             width: 100%; 
             max-width: 480px; 
@@ -35,7 +34,6 @@
             border-radius: 0;
         }
         
-        /* PC에서 볼 때 안정감을 주기 위해 데스크탑 환경에서만 테두리 둥글게 처리 */
         @media (min-width: 481px) {
             html, body { align-items: center; background: #2c2c2e; }
             .calculator { height: 95%; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
@@ -185,7 +183,6 @@
             renderFinalResult();
         }
         
-        // 버튼 누른 '그 즉시' 강제로 화면 버퍼를 다시 그려서 단위와 기호를 즉시 동기화
         renderScreen();
     }
 
@@ -248,26 +245,34 @@
         renderScreen();
     }
 
+    // 초기화 시 완전히 깨끗하게 원화 기본 상태로 복구
     function clearScreen() {
         inputString = "0";
         isCalculated = false;
         calculatedRawResult = 0;
-        document.getElementById("screen").innerText = "0";
-        document.getElementById("sub-numeric").innerText = "0 원";
+        currentCurrency = "KRW";
+        for (let key in modeIds) {
+            let btn = document.getElementById(modeIds[key]);
+            if (key === 'KRW') btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+        renderScreen();
         document.getElementById("result-screen").innerText = "0 원";
-        switchCurrencyMode('KRW'); 
     }
 
+    // [버그 전면 수정] 어떤 조건이든 현재 선택된 통화 기호가 수식창 텍스트 각 숫자 파트 앞에 즉시 붙도록 교정
     function renderScreen() {
         let sign = currencySigns[currentCurrency];
         
         if (isCalculated) {
-            document.getElementById("screen").innerText = sign + inputString;
+            document.getElementById("screen").innerText = sign + calculatedRawResult.toLocaleString(undefined, { maximumFractionDigits: 4 });
         } else {
+            // 수식 내 연산자를 기준으로 분리하여 모든 숫자 유닛 앞에 현재 통화 기호를 완벽하게 강제 삽입
             let parts = inputString.split(/([÷×\-+])/);
             let formattedDisplay = parts.map(part => {
-                if (/^[0-9.억만천백십]+$/.test(part)) {
-                    return sign + part;
+                let trimmed = part.trim();
+                if (trimmed && /^[0-9.억만천백십]+$/.test(trimmed)) {
+                    return sign + trimmed;
                 }
                 return part;
             }).join('');
@@ -321,6 +326,7 @@
         return total;
     }
 
+    // [버그 전면 수정] 주석 한글 풀이창도 현재 선택된 화폐 단위명이 꼬임 없이 실시간 결합되도록 처리
     function updateSubNumeric() {
         if (inputString === "0") {
             document.getElementById("sub-numeric").innerText = "0 " + currencyTexts[currentCurrency];
