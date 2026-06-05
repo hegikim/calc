@@ -149,7 +149,7 @@
     // [로직 변경] 6시간 주기 정방향 고속 API로 수집 엔진 전면 교체
     async function fetchRealTimeRates() {
         try {
-            const response = await fetch('https://v6.exchangerate-api.com/v6/60076a5b6f37622cba28399e/latest/USD');
+            const response = await fetch('https://v6.exchangerate-api.com/v6/7a4051cc9d8c83c6fe057f7f/latest/USD');
             if (!response.ok) throw new Error();
             const data = await response.json();
             
